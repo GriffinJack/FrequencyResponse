@@ -21,7 +21,7 @@ def save_as_wav(signal, filename = "chirp.wav", sample_rate = 44100):
 
 def plot_wave(signal, t, filename):
     plt.figure()
-    plt.plot(t[:2000], signal[:2000])
+    plt.plot(t[:5000], signal[:5000])
     plt.title("Chirp Waveform")
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
@@ -41,16 +41,16 @@ def play_wave(signal, duration=None):
         "sample_rate": signal['sample_rate']
     }
 
+if __name__ == "__main__":
+    sig = sine_sweep(duration = 0.5)
+    save_as_wav(sig["signal"], "testing.wav")
+    plot_wave(sig["signal"], sig['time'],"testing.png")
 
-sig = sine_sweep(duration = 0.5)
-save_as_wav(sig["signal"], "testing.wav")
-plot_wave(sig["signal"], sig['time'],"testing.png")
-
-sample_sig = play_wave(sig, duration = 0.5)
-save_as_wav(sample_sig['signal'], "sample_testing.wav")
-plot_wave(sample_sig["signal"], sample_sig['time'],"sample_testing.png")
-print(sig['signal'].shape)
-print(sample_sig["signal"].shape)
+    sample_sig = play_wave(sig, duration = 0.5)
+    save_as_wav(sample_sig['signal'], "sample_testing.wav")
+    plot_wave(sample_sig["signal"], sample_sig['time'],"sample_testing.png")
+    print(sig['signal'].shape)
+    print(sample_sig["signal"].shape)
 
 
 
