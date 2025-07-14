@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import chirp
 from scipy.io.wavfile import write
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import sounddevice as sd
 import os
 
@@ -14,6 +15,7 @@ class ChirpAnalyzer:
         self.wav_path = self.save_as_wav("generated_chirp.wav")
         self.recorded_signal = None
         self.recorded_path = None
+        self.response_data = None
 
 
     def save_as_wav(self, filename = "chirp.wav"):
@@ -53,6 +55,37 @@ class ChirpAnalyzer:
         sig_int16 = np.int16(self.recorded_signal / np.max(np.abs(self.recorded_signal)) * 32767)
         write(self.recorded_path, self.sample_rate, sig_int16)
 
+    def analyze_response(self, plot=True):
+        if self.recorded_signal is None:
+            raise ValueError("No recorded signal. Run play_wave() first.")
+
+        gen_fft = np.fft.rfft(self.signal)
+        rec_fft = np.fft.rfft(self.recorded_signal)
+
+        freqs = np.fft.rfftfreq(int(len(self.signal)), 1 / self.sample_rate)
+
+        gen_mag = np.abs(gen_fft)
+        rec_mag = np.abs(rec_fft)
+
+        gen_mag[gen_mag == 0] = 1e-10
+
+        gain_db = 20 * np.log10(rec_mag / gen_mag)
+
+        self.response_data = (freqs, gain_db)
+
+        if plot:
+            plt.figure()
+            plt.semilogx(freqs, gain_db)
+            plt.title("Frequency Response")
+            plt.xlabel("Frequency [Hz]")
+            plt.ylabel("Gain [dB]")
+            plt.grid(True, which="both", ls="--", lw=0.5)
+            ax = plt.gca()
+            ax.set_xscale('log')
+            ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+            ax.ticklabel_format(style='plain', axis='x')
+            plt.savefig("static/plots/frequency_response.png")
+            print("Saved frequency response to static/plots/frequency_response.png")
 
 if __name__ == "__main__":
 
@@ -60,6 +93,7 @@ if __name__ == "__main__":
     sig.play_wave()
     sig.plot_wave(filename="gen_wave.png")
     sig.plot_wave(filename="recorded_wave.png", recorded=True)
+    sig.analyze_response()
 
 
 
