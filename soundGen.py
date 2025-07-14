@@ -3,54 +3,63 @@ from scipy.signal import chirp
 from scipy.io.wavfile import write
 import matplotlib.pyplot as plt
 import sounddevice as sd
+import os
+
+class ChirpAnalyzer:
+    def __init__(self, duration = 1.0, sample_rate= 44100, f0 = 20, f1 = 10000):
+        self.time = np.linspace(0, duration, int(duration * sample_rate))
+        self.signal = chirp(self.time, f0=f0, f1=f1, t1=duration, method='linear')
+        self.sample_rate = sample_rate
+        self.duration = duration
+        self.wav_path = self.save_as_wav("generated_chirp.wav")
+        self.recorded_signal = None
+        self.recorded_path = None
 
 
-def sine_sweep(duration = 1.0, sample_rate = 44100):
-    t = np.linspace(0, duration, int(duration * sample_rate))
-    signal = chirp(t, f0=20, f1=10000, t1=duration, method='linear')
+    def save_as_wav(self, filename = "chirp.wav"):
+        path = os.path.join("static", "wav", filename)
+        sig_int16 = np.int16(self.signal/np.max(np.abs(self.signal))*32767)
+        write(path, self.sample_rate, sig_int16)
+        return path
 
-    return {
-        "time": t,
-        "signal": signal,
-        "sample_rate": sample_rate
-        }
+    def plot_wave(self, filename = "chirp_plot.png", recorded=False, samples=5000):
+        path = os.path.join("static", "plots", filename)
 
-def save_as_wav(signal, filename = "chirp.wav", sample_rate = 44100):
-    sig_int16 = np.int16(signal/np.max(np.abs(signal))*32767)
-    write(filename, sample_rate, sig_int16)
+        if recorded:
+            if self.recorded_signal is None:
+                raise ValueError("No recorded signal found. Please run play_wave() first.")
+            signal = self.recorded_signal
+            label = "Recorded Signal"
+        else:
+            signal = self.signal
+            label = "Generated Chirp"
 
-def plot_wave(signal, t, filename):
-    plt.figure()
-    plt.plot(t[:5000], signal[:5000])
-    plt.title("Chirp Waveform")
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-    plt.savefig(filename)
+        plt.figure()
+        plt.plot(self.time[:samples], signal[:samples])
+        plt.title(f"{label} Waveform")
+        plt.xlabel("Time [s]")
+        plt.ylabel("Amplitude")
+        plt.savefig(path)
 
-def play_wave(signal, duration=None):
-    if duration is None:
-        duration = len(signal['signal']) / signal["sample_rate"]
+    def play_wave(self, filename = "recorded.wav"):
+        print("Playing Waveform")
+        recording = sd.playrec(self.signal, self.sample_rate, channels=1, dtype='float32')
+        sd.wait()
+        print("Done")
 
-    print("Playing Waveform")
-    recording = sd.playrec(signal['signal'], signal['sample_rate'], channels=1, dtype='float32')
-    sd.wait()
-    print("Done")
-    return {
-        "time": signal['time'],
-        "signal": recording.flatten(),
-        "sample_rate": signal['sample_rate']
-    }
+        self.recorded_signal = recording.flatten()
+        self.recorded_path = os.path.join("static", "wav", filename)
+
+        sig_int16 = np.int16(self.recorded_signal / np.max(np.abs(self.recorded_signal)) * 32767)
+        write(self.recorded_path, self.sample_rate, sig_int16)
+
 
 if __name__ == "__main__":
-    sig = sine_sweep(duration = 0.5)
-    save_as_wav(sig["signal"], "testing.wav")
-    plot_wave(sig["signal"], sig['time'],"testing.png")
 
-    sample_sig = play_wave(sig, duration = 0.5)
-    save_as_wav(sample_sig['signal'], "sample_testing.wav")
-    plot_wave(sample_sig["signal"], sample_sig['time'],"sample_testing.png")
-    print(sig['signal'].shape)
-    print(sample_sig["signal"].shape)
+    sig = ChirpAnalyzer()
+    sig.play_wave()
+    sig.plot_wave(filename="gen_wave.png")
+    sig.plot_wave(filename="recorded_wave.png", recorded=True)
 
 
 
